@@ -2,3 +2,4 @@ tornado==5.1.1
 requests
 py_zipkin
 opentelemetry-exporter-otlp
+simplejson
