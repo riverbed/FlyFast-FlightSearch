@@ -21,6 +21,8 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
+import simplejson as json
+
 zipkinUrl = get_zipkin_url()
 urlParts = urlparse(zipkinUrl)
 hostname = "localhost"
@@ -65,7 +67,8 @@ class SearchFlightHandler(BaseRequestHandler):
 
         self.span.update_binary_annotations({'sentresponseinjectedheader': self.span.zipkin_attrs.span_id})
         self.set_header("x-opnet-transaction-trace", self.span.zipkin_attrs.span_id)
-        self.write("Sorry, no flights from {} to {} yet".format(src, dst))
+        result = json.dumps("Sorry, no flights from {} to {} yet".format(src, dst))
+        self.write(result)
         sendOTSpan()
 
 def make_app():
