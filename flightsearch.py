@@ -1,4 +1,6 @@
+from datetime import datetime
 import os
+from random import randint, random
 from urllib.parse import urlparse
 
 import tornado.ioloop
@@ -22,6 +24,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 import simplejson as json
+from datetime import timedelta
 
 zipkinUrl = get_zipkin_url()
 urlParts = urlparse(zipkinUrl)
@@ -63,20 +66,32 @@ flight = {"flightNumber": 166, "from" : "BOS", "to": "JFK", "departureTime" : "2
 class SearchFlightHandler(BaseRequestHandler):
     def get(self):
        
-        src = self.get_argument('from')
-        dst = self.get_argument('to')
+        flight["from"] = self.get_argument('from')
+        flight["to"]  = self.get_argument('to')
+        deptartureTime = datetime.now() + timedelta(days=2, hours=5)
+        ArrivalTime = datetime.now() + timedelta(days=2, hours=7)     
+        flight["deptartureTime"] = deptartureTime.strftime("%m/%d/%Y, %H:%M")
+        flight["arrivalTime"] = ArrivalTime.strftime("%m/%d/%Y, %H:%M")
+        flight["fare"] = randint(75, 1000)
+        flight["flightNumber"] = randint(100, 1000)
 
         self.span.update_binary_annotations({'sentresponseinjectedheader': self.span.zipkin_attrs.span_id})
         self.set_header("x-opnet-transaction-trace", self.span.zipkin_attrs.span_id)
-      
+
         result = json.dumps(flight)
         self.write(result)
         sendOTSpan()
         
     def post(self):
 
-        src = self.get_argument('from')
-        dst = self.get_argument('to')
+        flight["from"] = self.get_argument('from')
+        flight["to"]  = self.get_argument('to')
+        deptartureTime = datetime.now() + timedelta(days=2, hours=5)
+        ArrivalTime = datetime.now() + timedelta(days=2, hours=7)     
+        flight["deptartureTime"] = deptartureTime.strftime("%m/%d/%Y, %H:%M")
+        flight["arrivalTime"] = ArrivalTime.strftime("%m/%d/%Y, %H:%M")
+        flight["fare"] = randint(75, 1000)
+        flight["flightNumber"] = randint(100, 1000)
 
         self.span.update_binary_annotations({'sentresponseinjectedheader': self.span.zipkin_attrs.span_id})
         self.set_header("x-opnet-transaction-trace", self.span.zipkin_attrs.span_id)
