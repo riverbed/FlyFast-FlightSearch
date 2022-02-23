@@ -59,6 +59,7 @@ class TemplateHandler(BaseRequestHandler):
         self.write(template.generate(zipkin_url=get_zipkin_url()))
         sendOTSpan()
 
+flight = {"flightNumber": 166, "from" : "BOS", "to": "JFK", "departureTime" : "2020-04-26T07:00", "arrivalTime": "2020-04-26T08:00", "fare":495}
 class SearchFlightHandler(BaseRequestHandler):
     def get(self):
        
@@ -67,7 +68,20 @@ class SearchFlightHandler(BaseRequestHandler):
 
         self.span.update_binary_annotations({'sentresponseinjectedheader': self.span.zipkin_attrs.span_id})
         self.set_header("x-opnet-transaction-trace", self.span.zipkin_attrs.span_id)
-        result = json.dumps("Sorry, no flights from {} to {} yet".format(src, dst))
+      
+        result = json.dumps(flight)
+        self.write(result)
+        sendOTSpan()
+        
+    def post(self):
+
+        src = self.get_argument('from')
+        dst = self.get_argument('to')
+
+        self.span.update_binary_annotations({'sentresponseinjectedheader': self.span.zipkin_attrs.span_id})
+        self.set_header("x-opnet-transaction-trace", self.span.zipkin_attrs.span_id)
+       
+        result = json.dumps(flight)
         self.write(result)
         sendOTSpan()
 
