@@ -1,7 +1,8 @@
 from datetime import datetime
 import os
-from random import randint, random
+import random
 from urllib.parse import urlparse
+from xmlrpc.client import DateTime
 
 import tornado.ioloop
 import tornado.options
@@ -25,6 +26,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 import simplejson as json
 from datetime import timedelta
+import database.findAirport
 
 zipkinUrl = get_zipkin_url()
 urlParts = urlparse(zipkinUrl)
@@ -62,48 +64,89 @@ class TemplateHandler(BaseRequestHandler):
         self.write(template.generate(zipkin_url=get_zipkin_url()))
         sendOTSpan()
 
-flight = {"flightNumber": 166, "from" : "BOS", "to": "JFK", "departureTime" : "2020-04-26T07:00", "arrivalTime": "2020-04-26T08:00", "fare":495}
+
 class SearchFlightHandler(BaseRequestHandler):
-    def get(self):
-       
-        flight["from"] = self.get_argument('from')
-        flight["to"]  = self.get_argument('to')
-        deptartureTime = datetime.now() + timedelta(days=2, hours=5)
-        ArrivalTime = datetime.now() + timedelta(days=2, hours=7)     
-        flight["departureTime"] = deptartureTime.strftime("%m/%d/%Y, %H:%M")
-        flight["arrivalTime"] = ArrivalTime.strftime("%m/%d/%Y, %H:%M")
-        flight["fare"] = randint(75, 1000)
-        flight["flightNumber"] = randint(100, 1000)
+    
+    def make_flight(self, returnFlightDate, src, dst, seatType = 'Economy'):
+        flight = {}
+
+        returnDate = time.strptime(returnFlightDate, "%m/%d/%Y")
+        departureTime = datetime(returnDate.tm_year, returnDate.tm_mon, returnDate.tm_mday)
+        flight["departureTime"] = departureTime.strftime("%m/%d/%Y, %H:%M")
+        flight["arrivalTime"] = (departureTime +  timedelta(days=0, hours=3)).strftime("%m/%d/%Y, %H:%M")
+        flight["from"] = src
+        flight["to"] = dst
+        flight["seat"] = seatType
+        
+        seed = str(flight)       
+        random.seed(seed)
+        flight["fare"] = random.randint(75, 1000)
+        random.seed(seed)
+        flight["flightNumber"] = random.randint(100, 1000)
+        return flight
+
+    def handle_request_post_n_get(self):
+      
+        flights = []
+        searchParams  = json.dumps({ k: self.get_argument(k) for k in self.request.arguments })
+        print ("flight search parameters received: " + searchParams)
+
+        departure = datetime.now().strftime("%m/%d/%Y")
+
+        if 'departure' in searchParams:
+             departure = self.get_argument('departure')
+
+        seatype = 'Economy'
+        if 'seat' in searchParams:
+             seatype = self.get_argument('seat')
+
+
+        foundFlight = self.make_flight(departure, self.get_argument('from'), self.get_argument('to'), seatype)        
+        flights.append(foundFlight)
+        
+        if 'return' in searchParams:
+            print("round trip")
+            returnFlight = self.make_flight(self.get_argument('return'), self.get_argument('to'), self.get_argument('from'), seatype)
+            flights.append(returnFlight)
 
         self.span.update_binary_annotations({'sentresponseinjectedheader': self.span.zipkin_attrs.span_id})
-        self.set_header("x-opnet-transaction-trace", self.span.zipkin_attrs.span_id)
-
-        result = json.dumps(flight)
+        self.set_header("x-opnet-transaction-trace", self.span.zipkin_attrs.span_id)       
+        result = json.dumps(flights)
         self.write(result)
         sendOTSpan()
+
+    def get(self):       
+       self.handle_request_post_n_get()
         
     def post(self):
+        self.handle_request_post_n_get()
 
-        flight["from"] = self.get_argument('from')
-        flight["to"]  = self.get_argument('to')
-        deptartureTime = datetime.now() + timedelta(days=2, hours=5)
-        ArrivalTime = datetime.now() + timedelta(days=2, hours=7)     
-        flight["departureTime"] = deptartureTime.strftime("%m/%d/%Y, %H:%M")
-        flight["arrivalTime"] = ArrivalTime.strftime("%m/%d/%Y, %H:%M")
-        flight["fare"] = randint(75, 1000)
-        flight["flightNumber"] = randint(100, 1000)
 
+class AirportLookAheadHandler(BaseRequestHandler):
+    
+    def handle_request_post_n_get(self):
+        
+        searchTxt = self.get_argument('searchtxt')
         self.span.update_binary_annotations({'sentresponseinjectedheader': self.span.zipkin_attrs.span_id})
         self.set_header("x-opnet-transaction-trace", self.span.zipkin_attrs.span_id)
-       
-        result = json.dumps(flight)
-        self.write(result)
+        airports = database.findAirport.find_airports_containing(searchTxt)        
+        self.write(airports)
         sendOTSpan()
+
+    def get(self):       
+       self.handle_request_post_n_get()
+        
+    def post(self):
+        self.handle_request_post_n_get()
+
+
+    
 
 def make_app():
     return tornado.web.Application([
         (r"/", TemplateHandler),       
-        (r"/searchflight", SearchFlightHandler),
+        (r"/flightsearchapi/searchflight", SearchFlightHandler),
+        (r"/flightsearchapi/airportypeahead", AirportLookAheadHandler),
         (r"/(.*)", StaticFileHandler, {"path": os.path.join(LOCAL_DIR, "static"), "default_filename": "index.html"}),
     ])
 
