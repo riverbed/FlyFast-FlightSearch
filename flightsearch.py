@@ -64,7 +64,6 @@ class TemplateHandler(BaseRequestHandler):
         self.write(template.generate(zipkin_url=get_zipkin_url()))
         sendOTSpan()
 
-
 class SearchFlightHandler(BaseRequestHandler):
     
     def make_flight(self, returnFlightDate, src, dst, seatType = 'Economy'):
@@ -92,14 +91,12 @@ class SearchFlightHandler(BaseRequestHandler):
         print ("flight search parameters received: " + searchParams)
 
         departure = datetime.now().strftime("%m/%d/%Y")
-
         if 'departure' in searchParams:
              departure = self.get_argument('departure')
 
         seatype = 'Economy'
         if 'seat' in searchParams:
              seatype = self.get_argument('seat')
-
 
         foundFlight = self.make_flight(departure, self.get_argument('from'), self.get_argument('to'), seatype)        
         flights.append(foundFlight)
@@ -137,10 +134,7 @@ class AirportLookAheadHandler(BaseRequestHandler):
        self.handle_request_post_n_get()
         
     def post(self):
-        self.handle_request_post_n_get()
-
-
-    
+        self.handle_request_post_n_get()    
 
 def make_app():
     return tornado.web.Application([
