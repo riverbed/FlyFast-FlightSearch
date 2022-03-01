@@ -17,11 +17,11 @@ def find_airports_containing(text):
     connection = make_airports_db()   
     cursor = connection.cursor()
     query = """SELECT 
-        AirportCode ,
-        AirportName ,
-        Address ,
-        City ,
-        Region ,
+        AirportCode,
+        AirportName,
+        Address,
+        City,
+        Region,
         Country      
         FROM Airports
         WHERE AirportName LIKE '%{}%'   OR 
@@ -33,11 +33,10 @@ def find_airports_containing(text):
             Region LIKE '%{}%' --case-insensitive
         """.format(text, text, text, text, text, text, text)  
     cursor.execute(query)
-    rows = cursor.fetchall()
-    print("count {}".format(len(rows)))
-    rowsAsJson= json.dumps(rows)   
+    rows = [dict((cursor.description[i][0], value) for i, value in enumerate(row)) for row in cursor.fetchall()]
+    rowsAsJson = json.dumps(rows)  
     print(rowsAsJson)
     return rowsAsJson
     
-# find_airports_containing("ing")
+
 
