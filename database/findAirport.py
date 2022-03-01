@@ -33,9 +33,20 @@ def find_airports_containing(text):
             Region LIKE '%{}%' --case-insensitive
         """.format(text, text, text, text, text, text, text)  
     cursor.execute(query)
-    rows = [dict((cursor.description[i][0], value) for i, value in enumerate(row)) for row in cursor.fetchall()]
-    rowsAsJson = json.dumps(rows)  
-    print(rowsAsJson)
+    
+    airport = {}
+    airports = []
+    for row in cursor.fetchall():
+        airport["value"] = row[0]
+        airport["name"] = row[1]
+        airport["address"] = row[2]
+        airport["city"] = row[3]
+        airport["region"] = row[4]
+        airport["country"] = row[5]
+        airports.append(airport)
+
+    rowsAsJson = json.dumps(airports)
+    # print(rowsAsJson)
     return rowsAsJson
     
 
