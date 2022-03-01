@@ -16,12 +16,22 @@ def make_airports_db():
 def find_airports_containing(text):
     connection = make_airports_db()   
     cursor = connection.cursor()
-    query = """SELECT *
+    query = """SELECT 
+        AirportCode ,
+        AirportName ,
+        Address ,
+        City ,
+        Region ,
+        Country      
         FROM Airports
         WHERE AirportName LIKE '%{}%'   OR 
             Address LIKE '%{}%' OR
-              Region LIKE '%{}%' --case-insensitive
-        """.format(text, text, text)  
+            AirportCode LIKE '%{}%' OR
+            City LIKE '%{}%' OR
+            Region LIKE '%{}%' OR
+            Country LIKE '%{}%' OR
+            Region LIKE '%{}%' --case-insensitive
+        """.format(text, text, text, text, text, text, text)  
     cursor.execute(query)
     rows = cursor.fetchall()
     print("count {}".format(len(rows)))
