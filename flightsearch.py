@@ -123,10 +123,14 @@ class AirportLookAheadHandler(BaseRequestHandler):
     
     def handle_request_post_n_get(self):
         
+        searchParams  = json.dumps({ k: self.get_argument(k) for k in self.request.arguments })
         searchTxt = self.get_argument('searchtxt')
+        limit = 15
+        if 'limit' in searchParams:
+            limit = self.get_argument('limit')
         self.span.update_binary_annotations({'sentresponseinjectedheader': self.span.zipkin_attrs.span_id})
         self.set_header("x-opnet-transaction-trace", self.span.zipkin_attrs.span_id)
-        airports = database.findAirport.find_airports_containing(searchTxt)        
+        airports = database.findAirport.find_airports_containing(searchTxt, limit)        
         self.write(airports)
         sendOTSpan()
 

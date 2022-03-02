@@ -13,16 +13,16 @@ def make_airports_db():
     cursor.executescript(sql_as_string)
     return connection
    
-def find_airports_containing(text):
+def find_airports_containing(text, limit):
     connection = make_airports_db()   
     cursor = connection.cursor()
     query = """SELECT 
-        AirportCode,
-        AirportName,
-        Address,
-        City,
-        Region,
-        Country      
+        AirportCode AS value,
+        AirportName AS name,
+        Address AS address,
+        City AS city,
+        Region AS region,
+        Country AS country      
         FROM Airports
         WHERE AirportName LIKE '%{}%'   OR 
             Address LIKE '%{}%' OR
@@ -31,21 +31,11 @@ def find_airports_containing(text):
             Region LIKE '%{}%' OR
             Country LIKE '%{}%' OR
             Region LIKE '%{}%' --case-insensitive
-        """.format(text, text, text, text, text, text, text)  
+        LIMIT {}
+        """.format(text, text, text, text, text, text, text, limit)  
     cursor.execute(query)
-    
-    airport = {}
-    airports = []
-    for row in cursor.fetchall():
-        airport["value"] = row[0]
-        airport["name"] = row[1]
-        airport["address"] = row[2]
-        airport["city"] = row[3]
-        airport["region"] = row[4]
-        airport["country"] = row[5]
-        airports.append(airport)
-
-    rowsAsJson = json.dumps(airports)
+    rows = [dict((cursor.description[i][0], value) for i, value in enumerate(row)) for row in cursor.fetchall()]
+    rowsAsJson = json.dumps(rows)  
     # print(rowsAsJson)
     return rowsAsJson
     
