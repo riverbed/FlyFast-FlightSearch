@@ -65,8 +65,8 @@ class SearchFlightHandler(BaseRequestHandler):
             returnFlight = self.make_flight(self.get_argument('return'), self.get_argument('to'), self.get_argument('from'), seatype)
             flights.append(returnFlight)
 
-        self.span.update_binary_annotations({'sentresponseinjectedheader': self.span.zipkin_attrs.span_id})
-        self.set_header("x-opnet-transaction-trace", self.span.zipkin_attrs.span_id)       
+        # self.span.update_binary_annotations({'sentresponseinjectedheader': self.span.zipkin_attrs.span_id})
+        # self.set_header("x-opnet-transaction-trace", self.span.zipkin_attrs.span_id)       
         result = json.dumps(flights)
         self.write(result)
         
@@ -87,8 +87,8 @@ class AirportLookAheadHandler(BaseRequestHandler):
         limit = 15
         if 'limit' in searchParams:
             limit = self.get_argument('limit')
-        self.span.update_binary_annotations({'sentresponseinjectedheader': self.span.zipkin_attrs.span_id})
-        self.set_header("x-opnet-transaction-trace", self.span.zipkin_attrs.span_id)
+        # self.span.update_binary_annotations({'sentresponseinjectedheader': self.span.zipkin_attrs.span_id})
+        # self.set_header("x-opnet-transaction-trace", self.span.zipkin_attrs.span_id)
         airports = database.findAirport.find_airports_containing(searchTxt, limit)        
         self.write(airports)
 

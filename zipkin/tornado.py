@@ -91,7 +91,8 @@ def get_otlp_tracer():
     trace.set_tracer_provider(tracer_provider)   
     span_processor = BatchSpanProcessor(span_exporter)
     tracer_provider.add_span_processor(span_processor)
-    tracer = trace.get_tracer_provider().get_tracer(__name__)   
+    tracer = trace.get_tracer_provider().get_tracer("Flyfast-FlightSearch")   
+    # tracer = trace.get_tracer_provider().get_tracer(__name__)   
     return tracer
     
 tracer = get_otlp_tracer()
@@ -99,28 +100,39 @@ tracer = get_otlp_tracer()
 class BaseRequestHandler(RequestHandler):
    
     def _execute(self, *args, **kwargs):
-        self.span = create_span_from_tornado_request(self.request)
-        self.span.start()
+        # self.span = create_span_from_tornado_request(self.request)
+        # self.span.start()
 
         self.otlp_span = tracer.start_span(self.request.path,
                             kind=trace.SpanKind.SERVER,
-                            attributes={
-                                "http.method": self.request.method,
-                                "http.url": self.request.uri,
-                                "service.name": app_name
-                            },)
+                            # attributes={
+                            #     "http.method": self.request.method,
+                            #     "http.url": self.request.uri,
+                            #     "service.name": app_name
+                            # },
+                            )
         
         self.otlp_span.set_attribute("service.name", app_name)
+        self.otlp_span.set_attribute("host.name", get_hostname())
+        self.otlp_span.set_attribute("http.method", self.request.method)
+        self.otlp_span.set_attribute("http.url", self.request.uri)
+        
+        self.otlp_span.set_attribute("service.instance.id", "123")
+        self.otlp_span.set_attribute("instrumentation.library.name", "123")
+        
         super(BaseRequestHandler, self)._execute(*args, **kwargs)
        
     def log_exception(self, typ, value, tb):
         if not isinstance(value, HTTPError) or 500 <= value.status_code <= 599:
-            self.span.update_binary_annotations({'error': True})
-            self.span.stop(typ, value, tb)
+            # self.span.update_binary_annotations({'error': True})
+            # self.span.stop(typ, value, tb)
             self.otlp_span.end()
         super(BaseRequestHandler, self).log_exception(typ, value, tb)
 
     def on_finish(self):
-        self.span.update_binary_annotations({'http.status_code': self.get_status()})
-        self.span.stop()
+        # self.span.update_binary_annotations({'http.status_code': self.get_status()})
+        # self.span.stop()
+        # self.otlp_span.set_attribute("http.status_code", self.get_status())
+        self.otlp_span.set_attribute("sent.http.response.statuscode", self.get_status())
+        
         self.otlp_span.end()
