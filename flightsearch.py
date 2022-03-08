@@ -1,59 +1,20 @@
 from datetime import datetime
 import os
 import random
-from urllib.parse import urlparse
 from xmlrpc.client import DateTime
-
 import tornado.ioloop
 import tornado.options
 from tornado.web import Application, StaticFileHandler
 from tornado.template import Template
-
 from zipkin import get_zipkin_url
 from zipkin.tornado import BaseRequestHandler
-
 import logging
 logging.basicConfig()
-
 import time
-from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-    OTLPSpanExporter,
-)
-
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-
 import simplejson as json
 from datetime import timedelta
 import database.findAirport
 
-zipkinUrl = get_zipkin_url()
-urlParts = urlparse(zipkinUrl)
-hostname = "localhost"
-if urlParts.hostname is not None:
-    hostname = urlParts.hostname
-
-span_exporter = OTLPSpanExporter(
-        # optional     
-     endpoint="http://{}:4317".format(hostname),
-    # credentials=ChannelCredentials(credentials),
-    # headers=(("metadata", "metadata")),
-)
-
-tracer_provider = TracerProvider()
-trace.set_tracer_provider(tracer_provider)
-span_processor = BatchSpanProcessor(span_exporter)
-tracer_provider.add_span_processor(span_processor)
-tracer = trace.get_tracer_provider().get_tracer(__name__)
-count = 0
-
-def sendOTSpan():
-    global count
-    span = "span" + str(count)
-    with tracer.start_as_current_span(span):
-        print("sent OT span: " + span)
-        count = count + 1
 
 LOCAL_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -61,14 +22,12 @@ class TemplateHandler(BaseRequestHandler):
     def get(self):
         with open(os.path.join(LOCAL_DIR, "templates", "index.html.template"), "r") as infile:
             template = Template(infile.read())
-        self.write(template.generate(zipkin_url=get_zipkin_url()))
-        sendOTSpan()
+        self.write(template.generate(zipkin_url=get_zipkin_url()))        
 
 class SearchFlightHandler(BaseRequestHandler):
     
     def make_flight(self, returnFlightDate, src, dst, seatType = 'Economy'):
         flight = {}
-
         returnDate = time.strptime(returnFlightDate, "%m/%d/%Y")
         departureTime = datetime(returnDate.tm_year, returnDate.tm_mon, returnDate.tm_mday)
         flight["departureTime"] = departureTime.strftime("%m/%d/%Y, %H:%M")
@@ -110,7 +69,7 @@ class SearchFlightHandler(BaseRequestHandler):
         self.set_header("x-opnet-transaction-trace", self.span.zipkin_attrs.span_id)       
         result = json.dumps(flights)
         self.write(result)
-        sendOTSpan()
+        
 
     def get(self):       
        self.handle_request_post_n_get()
@@ -132,7 +91,6 @@ class AirportLookAheadHandler(BaseRequestHandler):
         self.set_header("x-opnet-transaction-trace", self.span.zipkin_attrs.span_id)
         airports = database.findAirport.find_airports_containing(searchTxt, limit)        
         self.write(airports)
-        sendOTSpan()
 
     def get(self):       
        self.handle_request_post_n_get()

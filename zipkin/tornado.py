@@ -4,14 +4,26 @@
 # /*      All Rights Reserved.      */
 # /**********************************/
 
+from urllib.parse import urlparse
 from tornado.web import RequestHandler, HTTPError
 
 from py_zipkin.zipkin import zipkin_span
 from py_zipkin import Encoding, Kind
 from py_zipkin.util import ZipkinAttrs
 
-from . import get_transport
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+    OTLPSpanExporter,
+)
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
+from opentelemetry.trace import set_span_in_context
+from opentelemetry import trace
+from  opentelemetry.sdk.trace import Resource
+
+from . import get_transport, get_zipkin_url
+
+app_name = "FlyFast-FlightSearch"
 
 def create_zipkin_attrs_from_tornado_request(request):
     zipkin_attrs = None
@@ -45,7 +57,7 @@ def create_span_from_tornado_request(request):
     request_headers = [{"key": key, "value": value} for key, value in request.headers.items()]
     return zipkin_span(
         sample_rate=100.0,
-        service_name="frontend",
+        service_name= app_name,
         span_name=span_name,
         transport_handler=get_transport(),
         encoding=Encoding.V2_JSON,
@@ -55,19 +67,60 @@ def create_span_from_tornado_request(request):
     )
 
 
+def get_hostname():
+    zipkinUrl = get_zipkin_url()
+    urlParts = urlparse(zipkinUrl)
+    hostname = "localhost"
+    if urlParts.hostname is not None:
+        hostname = urlParts.hostname
+    return hostname
+
+def get_otlp_tracer():
+    hostname = get_hostname()
+    span_exporter = OTLPSpanExporter(
+            # optional     
+        endpoint="http://{}:4317".format(hostname),
+        # credentials=ChannelCredentials(credentials),
+        # headers=(("metadata", "metadata")),
+    )
+    tracer_provider = TracerProvider(
+        resource=Resource.create({
+            "service.name": app_name,            
+        }),
+    )
+    trace.set_tracer_provider(tracer_provider)   
+    span_processor = BatchSpanProcessor(span_exporter)
+    tracer_provider.add_span_processor(span_processor)
+    tracer = trace.get_tracer_provider().get_tracer(__name__)   
+    return tracer
+    
+tracer = get_otlp_tracer()
+
 class BaseRequestHandler(RequestHandler):
+   
     def _execute(self, *args, **kwargs):
         self.span = create_span_from_tornado_request(self.request)
         self.span.start()
-        super(BaseRequestHandler, self)._execute(*args, **kwargs)
 
+        self.otlp_span = tracer.start_span(self.request.path,
+                            kind=trace.SpanKind.SERVER,
+                            attributes={
+                                "http.method": self.request.method,
+                                "http.url": self.request.uri,
+                                "service.name": app_name
+                            },)
+        
+        self.otlp_span.set_attribute("service.name", app_name)
+        super(BaseRequestHandler, self)._execute(*args, **kwargs)
+       
     def log_exception(self, typ, value, tb):
         if not isinstance(value, HTTPError) or 500 <= value.status_code <= 599:
             self.span.update_binary_annotations({'error': True})
             self.span.stop(typ, value, tb)
-
+            self.otlp_span.end()
         super(BaseRequestHandler, self).log_exception(typ, value, tb)
 
     def on_finish(self):
         self.span.update_binary_annotations({'http.status_code': self.get_status()})
         self.span.stop()
+        self.otlp_span.end()
