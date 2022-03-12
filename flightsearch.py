@@ -28,10 +28,10 @@ class SearchFlightHandler(BaseRequestHandler):
     
     def make_flight(self, returnFlightDate, src, dst, seatType = 'Economy'):
         flight = {}
-        returnDate = time.strptime(returnFlightDate, "%m/%d/%Y")
+        returnDate = time.strptime(returnFlightDate, "%m-%d-%Y")
         departureTime = datetime(returnDate.tm_year, returnDate.tm_mon, returnDate.tm_mday)
-        flight["departureTime"] = departureTime.strftime("%m/%d/%Y, %H:%M")
-        flight["arrivalTime"] = (departureTime +  timedelta(days=0, hours=3)).strftime("%m/%d/%Y, %H:%M")
+        flight["departureTime"] = departureTime.strftime("%m-%d-%Y, %H:%M")
+        flight["arrivalTime"] = (departureTime +  timedelta(days=0, hours=3)).strftime("%m-%d-%Y, %H:%M")
         flight["from"] = src
         flight["to"] = dst
         flight["seat"] = seatType
@@ -49,7 +49,7 @@ class SearchFlightHandler(BaseRequestHandler):
         searchParams  = json.dumps({ k: self.get_argument(k) for k in self.request.arguments })
         print ("flight search parameters received: " + searchParams)
 
-        departure = datetime.now().strftime("%m/%d/%Y")
+        departure = datetime.now().strftime("%m-%d-%Y")
         if 'departure' in searchParams:
              departure = self.get_argument('departure')
 
