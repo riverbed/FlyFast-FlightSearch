@@ -111,12 +111,13 @@ class SearchFlightHandler(BaseRequestHandler):
         departure_str = departureDate + " " + row[3]
         tm_struct = time.strptime(departure_str, "%m-%d-%Y %H:%M")
         departure_dt = datetime(tm_struct.tm_year, tm_struct.tm_mon, tm_struct.tm_mday, tm_struct.tm_hour, tm_struct.tm_min)
-        
-        departureTimeStruct = time.strptime(row[3], "%H:%M")
-        arrivalTimeStruct = time.strptime(row[4], "%H:%M")        
-        dt_departure = datetime.fromtimestamp(time.mktime(departureTimeStruct))
-        dt_arrival = datetime.fromtimestamp(time.mktime(arrivalTimeStruct))
-        diff = dt_arrival - dt_departure
+       
+        tm_struct = time.strptime(row[3], "%H:%M")
+        dt_depart_time = datetime(tm_struct.tm_year, tm_struct.tm_mon, tm_struct.tm_mday, tm_struct.tm_hour, tm_struct.tm_min)
+        tm_struct = time.strptime(row[4], "%H:%M")
+        dt_arrival_time = datetime(tm_struct.tm_year, tm_struct.tm_mon, tm_struct.tm_mday, tm_struct.tm_hour, tm_struct.tm_min)
+
+        diff = dt_arrival_time - dt_depart_time
         arrival_dt =  departure_dt + timedelta(seconds=diff.seconds)        
 
         flight = {}
