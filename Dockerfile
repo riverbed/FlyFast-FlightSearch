@@ -9,4 +9,4 @@ RUN pip install -r requirements.txt
 
 EXPOSE 8080
 ENV PYTHONPATH /app/ajax
-CMD [ "python3", "flightsearch.py" ]
+CMD [ "python3", "src/main.py" ]
