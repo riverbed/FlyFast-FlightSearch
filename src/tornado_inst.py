@@ -12,6 +12,7 @@ from opentelemetry import trace
 from  opentelemetry.sdk.trace import Resource
 
 from opentelemetry.trace.propagation import set_span_in_context
+from opentelemetry.propagators.b3 import B3Format
 
 APP_NAME = "FlyFast-FlightSearch"
 
@@ -56,9 +57,10 @@ def set_otlp_span_attributes(span):
 class BaseRequestHandler(RequestHandler):
    
     def _execute(self, *args, **kwargs):
-
+        propagator = B3Format()
+        context = propagator.extract(self.request.headers)
         self.otlp_span = tracer.start_span(self.request.path,
-                            kind=trace.SpanKind.SERVER, )
+                            kind=trace.SpanKind.SERVER, context=context)
         self.span_context = set_span_in_context(self.otlp_span)
         set_otlp_span_attributes(self.otlp_span)
         self.otlp_span.set_attribute("http.method", self.request.method)
