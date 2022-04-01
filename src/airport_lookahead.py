@@ -11,7 +11,7 @@ class AirportLookAheadHandler(BaseRequestHandler):
         limit = 15
         if 'limit' in searchParams:
             limit = self.get_argument('limit')
-        airports = airport_search.search_airports_containing(searchTxt)               
+        airports = airport_search.search_airports_containing(searchTxt, self.span_context)
         self.write(airports)
 
     def get(self):       

@@ -19,7 +19,7 @@ def ConnectToDB():
     database_file = os.path.join(parent_dir, "database", DATABASE_FILENAME )
     return sqlite3.connect(database_file)
 
-def search_airports_containing(text):
+def search_airports_containing(text, spanCntext):
     connection = ConnectToDB() 
     
     query = """SELECT 
@@ -35,15 +35,11 @@ def search_airports_containing(text):
             Country LIKE '%{}%' OR
             Region LIKE '%{}%' --case-insensitive
         """.format(text, text, text, text, text, text)  
-     
-    otlp_span = tornado_inst.tracer.start_span("find_airports_containing",
+    
+    otlp_span = tornado_inst.tracer.start_span("find_airports_containing", context=spanCntext,
                             kind=trace.SpanKind.SERVER, )
-        
-    otlp_span.set_attribute("service.name", tornado_inst.APP_NAME)
-    otlp_span.set_attribute("sql.query", query)    
-    otlp_span.set_attribute("host.name", tornado_inst.get_hostname())
-    otlp_span.set_attribute("service.instance.id", "123")
-
+    tornado_inst.set_otlp_span_attributes(otlp_span)
+    otlp_span.set_attribute("sql.query", query)
     cursor = connection.cursor()
     cursor.execute(query)
     rows = [dict((cursor.description[i][0], value) for i, value in enumerate(row)) for row in cursor.fetchall()]
