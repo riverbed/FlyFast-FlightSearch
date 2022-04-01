@@ -1,5 +1,6 @@
 import os
 from urllib.parse import urlparse
+from uuid import uuid4
 from tornado.web import RequestHandler, HTTPError
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
     OTLPSpanExporter,
@@ -9,6 +10,8 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import set_span_in_context
 from opentelemetry import trace
 from  opentelemetry.sdk.trace import Resource
+
+from opentelemetry.trace.propagation import set_span_in_context
 
 APP_NAME = "FlyFast-FlightSearch"
 
@@ -41,6 +44,14 @@ def get_otlp_tracer():
     return tracer
     
 tracer = get_otlp_tracer()
+service_instance_id = str(uuid4())
+
+def set_otlp_span_attributes(span):
+
+    span.set_attribute("service.name", APP_NAME)       
+    span.set_attribute("host.name", get_hostname())
+    span.set_attribute("service.instance.id", service_instance_id)
+    span.set_attribute("instrumentation.library.name", "opentelemetry")
 
 class BaseRequestHandler(RequestHandler):
    
@@ -48,19 +59,18 @@ class BaseRequestHandler(RequestHandler):
 
         self.otlp_span = tracer.start_span(self.request.path,
                             kind=trace.SpanKind.SERVER, )
-        
-        self.otlp_span.set_attribute("service.name", APP_NAME)
-        self.otlp_span.set_attribute("host.name", get_hostname())
+        self.span_context = set_span_in_context(self.otlp_span)
+        set_otlp_span_attributes(self.otlp_span)
         self.otlp_span.set_attribute("http.method", self.request.method)
-        self.otlp_span.set_attribute("http.url", self.request.uri)
-        
-        self.otlp_span.set_attribute("service.instance.id", "123")
-        self.otlp_span.set_attribute("instrumentation.library.name", "123")
+        self.otlp_span.set_attribute("http.url", self.request.uri)        
         
         super(BaseRequestHandler, self)._execute(*args, **kwargs)
        
     def log_exception(self, typ, value, tb):
         if not isinstance(value, HTTPError) or 500 <= value.status_code <= 599:
+            exception =(typ, value, tb)
+            self.otlp_span.record_exception(exception)
+            self.otlp_span.set_status(trace.Status(trace.StatusCode.ERROR, str(exception)))
             self.otlp_span.end()
         super(BaseRequestHandler, self).log_exception(typ, value, tb)
 

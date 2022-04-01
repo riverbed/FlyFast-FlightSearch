@@ -3,6 +3,7 @@ import os
 import random
 from select import select
 import sqlite3
+import trace
 from xmlrpc.client import DateTime
 import tornado.ioloop
 import tornado.options
@@ -14,8 +15,10 @@ logging.basicConfig()
 import time
 import simplejson as json
 from datetime import timedelta
+import tornado_inst
 
-
+from opentelemetry import trace
+from  opentelemetry.sdk.trace import Resource
 
 LOCAL_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -30,13 +33,6 @@ MAX_CONNECTION_TIME = 0.125
 
 PORT = 8080
 
-class TemplateHandler(BaseRequestHandler):
-    def get(self):
-        with open(os.path.join(os.path.dirname(LOCAL_DIR), "templates", "index.html.template"), "r") as infile:
-            response = infile.read()
-        
-        self.write(response)     
-
 class SearchFlightHandler(BaseRequestHandler):
     def ConnectToDB(self):
         dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -46,14 +42,22 @@ class SearchFlightHandler(BaseRequestHandler):
 
     def find_flights(self, departureDate, src, dst, seatType ):
       
-        flightSearchResponse = []       
-
+        flightSearchResponse = []
+        
         query = "SELECT * FROM Flight WHERE src='{}' AND dst='{}'".format(src, dst)
         connection = self.ConnectToDB()
         cursor = connection.cursor()
+        direct_flight_span = tornado_inst.tracer.start_span("find_direct_flights", 
+                                                    context=self.span_context,
+                                                    kind=trace.SpanKind.SERVER, )
+        tornado_inst.set_otlp_span_attributes(direct_flight_span)
+        direct_flight_span.set_attribute("sql.query", query)    
+
         cursor.execute(query)
-        # available_flights = [dict((cursor.description[i][0], value) for i, value in enumerate(row)) for row in cursor.fetchall()]
         direct_flights = cursor.fetchall()
+
+        direct_flight_span.set_attribute("sql.rows", len(direct_flights))    
+        direct_flight_span.end()
 
         if len(direct_flights) > 0:
             for direct_flight in direct_flights:
@@ -80,11 +84,19 @@ class SearchFlightHandler(BaseRequestHandler):
             AND StartFlight.Arrival < EndFlight.Departure 
             AND abs( julianday(StartFlight.Arrival)- julianday(EndFlight.Departure) )
             BETWEEN {} AND {};""".format(src, dst, MIN_CONNECTION_TIME, MAX_CONNECTION_TIME)
-           
+
+            non_direct_flight_span = tornado_inst.tracer.start_span("non_direct_flight_span", 
+                                                    context=self.span_context,
+                                                    kind=trace.SpanKind.SERVER, )
+            tornado_inst.set_otlp_span_attributes(non_direct_flight_span)
+            non_direct_flight_span.set_attribute("sql.query", query)  
+
             cursor = connection.cursor()
             cursor.execute(query)
             connected_flights = cursor.fetchall()
-                
+            non_direct_flight_span.set_attribute("sql.rows", len(connected_flights))    
+            non_direct_flight_span.end()    
+
             for itinerary in connected_flights:
                 start_flight = self.set_flight_attributes( departureDate, itinerary[0:8], seatType)
                 end_flight = self.set_flight_attributes( departureDate, itinerary[8:16], seatType)
