@@ -50,7 +50,6 @@ class SearchFlightHandler(BaseRequestHandler):
         direct_flight_span = tornado_inst.tracer.start_span("find_direct_flights", 
                                                     context=self.span_context,
                                                     kind=trace.SpanKind.SERVER, )
-        tornado_inst.set_otlp_span_attributes(direct_flight_span)
         direct_flight_span.set_attribute("sql.query", query)    
 
         cursor.execute(query)
@@ -88,7 +87,6 @@ class SearchFlightHandler(BaseRequestHandler):
             non_direct_flight_span = tornado_inst.tracer.start_span("non_direct_flight_span", 
                                                     context=self.span_context,
                                                     kind=trace.SpanKind.SERVER, )
-            tornado_inst.set_otlp_span_attributes(non_direct_flight_span)
             non_direct_flight_span.set_attribute("sql.query", query)  
 
             cursor = connection.cursor()

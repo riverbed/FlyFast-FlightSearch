@@ -38,7 +38,6 @@ def search_airports_containing(text, spanCntext):
     
     otlp_span = tornado_inst.tracer.start_span("find_airports_containing", context=spanCntext,
                             kind=trace.SpanKind.SERVER, )
-    tornado_inst.set_otlp_span_attributes(otlp_span)
     otlp_span.set_attribute("sql.query", query)
     cursor = connection.cursor()
     cursor.execute(query)
