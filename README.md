@@ -30,15 +30,15 @@ To view the full source code and to run the whole application through Docker, he
     pip install -r requirements.txt
     ```
 2. Make sure to set the environment variables for the application.
-    - `COLLECTOR_URL` is the APM Collector URL, which should be on port `9411`, if you are using the [Aternity APM Collector](https://hub.docker.com/r/aternity/apm-collector).
+    - `COLLECTOR_URL` is the APM Collector URL, which should be on port `55681`, if you are using the [Aternity APM Collector](https://hub.docker.com/r/aternity/apm-collector).
 
       For example, with Bash:
       ```
-      export COLLECTOR_URL="http://localhost:9411/api/v2/spans"
+      export COLLECTOR_URL="http://localhost:55681/v1/traces"
       ```
       or with Powershell:
       ```
-      $env:COLLECTOR_URL="http://localhost:9411/api/v2/spans"
+      $env:COLLECTOR_URL="http://localhost:55681/v1/traces"
       ```
 3. Start the application and open [http://localhost:8080](http://localhost:8080) to view it in your browser.
     ```
@@ -48,12 +48,12 @@ To view the full source code and to run the whole application through Docker, he
 ## Step by Step Using Docker
 1. Build our docker:
     ```
-    docker build . -t Search
+    docker build . -t flyfast-flightsearch
     ```
 2. Run our docker container, make sure to set the environment variables for the application:
-    - `COLLECTOR_URL` is the APM Collector URL, which should be on port `9411`, if you are using the [Aternity APM Collector](https://hub.docker.com/r/aternity/apm-collector).
+    - `COLLECTOR_URL` is the APM Collector URL, which should be on port `55681`, if you are using the [Aternity APM Collector](https://hub.docker.com/r/aternity/apm-collector).
     ```
-    docker run --rm -p 8080:8080 -e COLLECTOR_URL=http://localhost:9411/api/v2/spans Search
+    docker run --rm -p 8080:8080 -e COLLECTOR_URL=http://localhost:55681/v1/traces flyfast-flightsearch
     ```
 3. Open [http://localhost:8080](http://localhost:8080) to view it in your browser.
 

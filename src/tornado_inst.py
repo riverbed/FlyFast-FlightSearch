@@ -2,7 +2,7 @@ import os
 from urllib.parse import urlparse
 from uuid import uuid4
 from tornado.web import RequestHandler, HTTPError
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
     OTLPSpanExporter,
 )
 from opentelemetry.sdk.trace import TracerProvider
@@ -30,7 +30,7 @@ def get_otlp_tracer():
     hostname = get_hostname()
     span_exporter = OTLPSpanExporter(
         # optional
-        endpoint="http://{}:4317".format(hostname),
+        endpoint="http://{}:55681/v1/traces".format(hostname),
         # credentials=ChannelCredentials(credentials),
         # headers=(("metadata", "metadata")),
     )
@@ -53,14 +53,12 @@ tracer = get_otlp_tracer()
 
 
 class BaseRequestHandler(RequestHandler):
-
     def _execute(self, *args, **kwargs):
         propagator = B3Format()
         context = propagator.extract(self.request.headers)
         self.otlp_span = tracer.start_span(self.request.path,
                                            kind=trace.SpanKind.SERVER, context=context)
         self.span_context = set_span_in_context(self.otlp_span)
-        set_otlp_span_attributes(self.otlp_span)
         self.otlp_span.set_attribute("http.method", self.request.method)
         self.otlp_span.set_attribute("http.url", self.request.uri)
 
