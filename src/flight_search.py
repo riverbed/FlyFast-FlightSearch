@@ -187,10 +187,3 @@ class SearchFlightHandler(BaseRequestHandler):
         
     def post(self):
         self.handle_request()
-
-
-
-
-
-
-
