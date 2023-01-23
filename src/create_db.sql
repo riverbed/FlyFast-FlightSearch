@@ -4,7 +4,6 @@ CREATE TABLE [Airport]
 (      [AirportCode] TEXT,
        [AirportName] TEXT,
        [City] TEXT,
-       [Region] TEXT,
        [Country] TEXT,       
        [WorldAreaCode] INTEGER,
        [Zone] INTEGER,

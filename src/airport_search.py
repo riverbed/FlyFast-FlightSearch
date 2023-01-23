@@ -26,15 +26,13 @@ def search_airports_containing(text, spanCntext):
         AirportCode AS value,
         AirportName AS name,       
         City AS city,
-        Region AS region,
         Country AS country      
         FROM Airport
         WHERE AirportName LIKE '%{}%'   OR             
             AirportCode LIKE '%{}%' OR
             City LIKE '%{}%' OR           
-            Country LIKE '%{}%' OR
-            Region LIKE '%{}%' --case-insensitive
-        """.format(text, text, text, text, text, text)  
+            Country LIKE '%{}%' --case-insensitive
+        """.format(text, text, text, text, text)  
     
     otlp_span = tornado_inst.tracer.start_span("find_airports_containing", context=spanCntext,
                             kind=trace.SpanKind.SERVER, )
