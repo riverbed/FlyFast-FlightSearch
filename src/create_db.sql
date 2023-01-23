@@ -1,4 +1,3 @@
-
 DROP TABLE IF EXISTS [Airport];
 CREATE TABLE [Airport]
 (      [AirportCode] TEXT,
