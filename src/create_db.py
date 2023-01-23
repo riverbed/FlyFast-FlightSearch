@@ -11,7 +11,7 @@ from pyparsing import Word
 from os.path import exists
 
 TIME_FORMAT = "%H:%M"
-MAX_AREA_CODE = 100
+MAX_AREA_CODE = 50
 ZONES = 3
 FLIGHT_FREQUENCY = 8
 
@@ -44,94 +44,61 @@ class CreateDB():
         sql_as_string = sql_file.read()
         cursor.executescript(sql_as_string)
         
+    def get_zone(self, worldAreaCode):
 
-    def load_airports_w_names(self):
+        for ndx, zone in enumerate(self.zones):        
+            if worldAreaCode in zone:
+                return ndx
+
+        print("**ERROR: Unexpected worldAreaCode " + str(worldAreaCode))
+        return 0
+
+    def make_zones(self):
+        zoneSize = MAX_AREA_CODE//ZONES
+        self.zones = []
+        start = 0
+        
+        for x in range(ZONES):
+            stop = start + zoneSize + 1
+            if x == ZONES -1:
+                stop = MAX_AREA_CODE + 1
+
+            self.zones.append(range(start, stop ))
+            start = stop - 1
+
+    def load_airports_new(self):
+
         parent_dir = os.path.dirname(Local_Path)
         json_file= open(os.path.join(parent_dir, EXTERNAL_DATA_FOLDER, "AirportsData.json"), "r")
 
         jsonAirports = json.load(json_file)
         start = datetime.datetime.now()
-
-        query = "INSERT INTO AirportWithName (AirportCode, AirportName, City,  Country) VALUES"
         
+        logging.info("Data source items: " + str(len(jsonAirports)))
+
+        
+        query = "INSERT INTO Airport (AirportCode, AirportName, City, Region, Country, WorldAreaCode, Zone) VALUES"
+       
         for item in jsonAirports:
-            query += " ('{}', '{}', '{}', '{}'),".format(item['value'], 
-            item['name'].replace("'","''",-1), item['city'].replace("'","''",-1), 
-            item['country'].replace("'","''",-1))
+            if item['code'] <= MAX_AREA_CODE:
+                query += " ('{}', '{}', '{}', '{}', '{}', {}, {}),".format(item['value'], 
+                item['name'].replace("'","''",-1), item['city'].replace("'","''",-1), item['city'].replace("'","''",-1) + " " + item['country'].replace("'","''",-1),
+                item['country'].replace("'","''",-1), item['code'], self.get_zone(item['code']))
         
         query = query.rstrip(',')   + ';'      
         cursor = self.connection.cursor()
-        cursor.execute(query)    
-    
+        cursor.execute(query)
 
-    def load_airports_w_code(self):
-        
-        parent_dir = os.path.dirname(Local_Path)
-        f = open(os.path.join(parent_dir, EXTERNAL_DATA_FOLDER, "airports_codes.txt"), "r")   
-
-        query = "INSERT INTO AirportWithCode (AirportCode, City, Region, Country, WorldAreaCode) VALUES "
-    
-        for x in f:
-            parts = x.split('\"')
-            if len(parts) == 3:
-                code = parts[0].replace('\t','', -1)
-                location = parts[1].strip().replace("'", "''", -1).split(',')
-                if len(location) > 2:
-                    city = location[0].strip()
-                    region = location[1].strip()
-                    country = location[2].strip()
-                else:
-                    city = location[0].strip()
-                    region = ""
-                    country = location[1].strip()
-
-                world_area_code = parts[2].replace('\n', '',-1).replace('\t','',-1)
-                query += "('{}', '{}', '{}', '{}', {}),".format(code, city, region, country, world_area_code)
-        
-        query = query.rstrip(',')   + ';'   
-        self.connection.cursor().execute(query)
-
-    def load_airport(self):
-
-        query = """SELECT AirportWithCode.AirportCode, AirportWithName.AirportName, AirportWithCode.City, 
-                        AirportWithCode.Region, AirportWithCode.Country, AirportWithCode.WorldAreaCode
-                        FROM AirportWithCode
-                        INNER JOIN AirportWithName ON AirportWithCode.AirportCode=AirportWithName.AirportCode 
-                        AND AirportWithCode.WorldAreaCode < {} ;""".format(MAX_AREA_CODE)
-        
-        cursor = self.connection.cursor()
-        cursor.execute(query)   
-        airports = cursor.fetchall()
-        query = "INSERT INTO Airport (AirportCode, AirportName, City, Region, Country, WorldAreaCode, Zone) VALUES"
-        
-        for item in airports:   
-            query += " ('{}', '{}', '{}', '{}', '{}', {}, {}),".format(item[0],
-                        item[1].replace("'", "''", -1), item[2].replace("'", "''", -1),
-                        item[3].replace("'", "''", -1), item[4].replace("'", "''", -1),
-                        item[5], self.get_zone(item[5]))
-    
-
-        query = query.rstrip(',')   + ';'  
-        cursor = self.connection.cursor()
-        cursor.execute(query)    
-
-    def makeFlights(self):
+    def makeFlightsNew(self):
     
         flights = []
         logging.info("creating database")
         self.make_zones()
         self.create()
-        
-        logging.info("load_airports_w_names()")
-        self.load_airports_w_names()
 
-        logging.info("load_airports_w_code()")
-        self.load_airports_w_code()
-
-        logging.info("load_airport()")
-        self.load_airport()
+        self.load_airports_new()
     
-        logging.info("finding airports of interest('{}'".format(MAX_AREA_CODE))
+        logging.info("finding airports of interest(airport area code <= {})".format(MAX_AREA_CODE))
         cursor = self.connection.cursor()
         cursor.execute("SELECT * FROM Airport where WorldAreaCode < {} ORDER BY WorldAreaCode".format(MAX_AREA_CODE))           
         airports = cursor.fetchall()
@@ -145,7 +112,7 @@ class CreateDB():
         delta = timedelta(hours=FLIGHT_FREQUENCY)
         start = datetime.datetime.now()   
 
-        logging.info("Building Flight  data")    
+        logging.info("Building Flight  data...")    
         for src in airports:
         
             dt = dt.replace(year=2022, month= 1, day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -175,7 +142,7 @@ class CreateDB():
                     
         query = query.rstrip(',')   + ';'      
         print (datetime.datetime.now() - start)
-        logging.info("Inserting Flight  data")   
+        logging.info("Inserting Flight  data...")   
         cursor.execute(query)      
 
         query = "DROP TABLE IF EXISTS [AirportWithCode];"
@@ -186,24 +153,10 @@ class CreateDB():
         self.connection.commit()
         self.connection.close()
         logging.info("Database creation is complete")
-
     
-    def get_zone(self, worldAreaCode):
 
-        for ndx, zone in enumerate(self.zones):        
-            if worldAreaCode in zone:
-                return ndx
-
-        print("**ERROR: Unexpected worldAreaCode " + str(worldAreaCode))
-        return 0
-
-    def make_zones(self):
-        zoneSize = MAX_AREA_CODE//ZONES
-        self.zones = []
-        start = 0
-        for x in range(ZONES):
-            self.zones.append(range(start, start + zoneSize ))
-            start = start + zoneSize
+# obj = CreateDB()
+# obj.makeFlights()
 
 obj = CreateDB()
-obj.makeFlights()
+obj.makeFlightsNew()
