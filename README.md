@@ -73,7 +73,6 @@ To view the full source code and to run the whole application through Docker, he
     "value": ${airport},
     "name": ${airportName},
     "city": ${city},
-    "region": ${region},
     "country": ${country}
   }
 ]
