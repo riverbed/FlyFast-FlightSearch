@@ -1,6 +1,10 @@
 tornado==5.1.1
-requests
-opentelemetry-exporter-otlp
-opentelemetry-propagator-b3
 simplejson
-protobuf==3.20.*
+opentelemetry-distro[otlp]
+opentelemetry-instrumentation
+opentelemetry-propagator-b3
+
+# Unused reqs:
+# requests
+# protobuf
+# opentelemetry-exporter-otlp

@@ -1,6 +1,7 @@
-FROM python:3.7-slim-buster
-RUN apt update
-RUN apt-get update && apt-get install build-essential -y
+# Dockerfile
+# 24.10.4
+
+FROM python:3.9-slim
 
 WORKDIR /app
 COPY . .
